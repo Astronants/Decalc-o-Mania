@@ -1,8 +1,11 @@
 # Decalc-o-Mania
-# This is a TweakScale version
+# TweakScale version
 Decalc'o'mania is a mod that give you the possibility to add decals to your rockets.
-The mod comes with 10 custom decals (5 for the standard flag and 5 for the long decals) that you can modify.
+It comes with customizable decals and flags for your missions.
 
-You can also add more decals by modifying the config files, but remember that they will be rewritten in the future updates.
+You can also add more decals by modifying the config files, but remember that they will be rewritten during the update of the mod.
+
+IMPORTANT: if you update this mod, be sure to delete all other instances!
+
 
 Have fun !
