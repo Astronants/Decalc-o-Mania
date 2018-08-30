@@ -1,5 +1,4 @@
-# Decalc-o-Mania
-# TweakScale version
+# Decalc-o-Mania (TweakScale)
 Decalc'o'mania is a mod that give you the possibility to add decals to your rockets.
 It comes with customizable decals and flags for your missions.
 
