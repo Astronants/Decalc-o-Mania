@@ -8,3 +8,5 @@ IMPORTANT: if you update this mod, be sure to delete all other instances!
 
 
 Have fun !
+
+This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
