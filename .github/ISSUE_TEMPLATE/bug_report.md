@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: If you found any issue, please report it here
+about: If you found any issue, please report it
 
 ---
 
