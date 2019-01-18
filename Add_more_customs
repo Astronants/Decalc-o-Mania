@@ -12,7 +12,7 @@
 //		}
 //	}
 
-// To add even more custom textures, just copy/past the VARIANT under the other one, inside the ModulePartVariants.
+// To add even more custom textures, just copy/paste the VARIANT under the other one, inside the ModulePartVariants.
 
 @PART[*]:HAS[#tags[cck_decal,*],@MODULE[ModulePartVariants]]:FINAL
 {
