@@ -1,9 +1,0 @@
-C:\Users\Nico\Desktop\KSP\0_MODS\Decalc'o'mania\Decalco\Decalco\Output\Decalco.dll
-C:\Users\Nico\Desktop\KSP\0_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalco.csprojAssemblyReference.cache
-C:\Users\Nico\Desktop\KSP\0_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalco.csproj.CoreCompileInputs.cache
-C:\Users\Nico\Desktop\KSP\0_MODS\Decalc'o'mania\Decalco\Decalco\Output\Plugin\Decalc-o-mania.dll
-C:\Users\Nico\Desktop\KSP\0_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalc-o-mania.dll
-C:\Users\Nico\Desktop\KSP\00_MODS\Decalc'o'mania\Decalco\Decalco\Output\Plugin\Decalc-o-mania.dll
-C:\Users\Nico\Desktop\KSP\00_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalco.csprojAssemblyReference.cache
-C:\Users\Nico\Desktop\KSP\00_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalco.csproj.CoreCompileInputs.cache
-C:\Users\Nico\Desktop\KSP\00_MODS\Decalc'o'mania\Decalco\Decalco\obj\Debug\Decalc-o-mania.dll
