@@ -8,7 +8,7 @@ Add decals to your rockets!
 ==FEATURES==
 There are 2 types of decals: the flags and the customs decals.
 The mod comes with a Flags folder and templates for custom decals found in Decalc'o'mania/Textures/templates.
-If you want to add more textures for decals, add your image (png files only) in Decalc'o'mania/Textures. The plugin does not load the files in /Textures/agencies or /Textures/templates.
+If you want to add more textures for decals, add your image (png files only) in Decalc'o'mania/Textures.
 
 ==INSTALLATION==
 - Download CommunityCategoryKit here: https://github.com/BobPalmer/CommunityCategoryKit/releases
