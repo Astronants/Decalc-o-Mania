@@ -5,84 +5,75 @@ using UnityEngine;
 using System.IO;
 using System.Reflection;
 
-namespace APW
+namespace Decalco
 {
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     internal class InstallCheck : MonoBehaviour
     {
-        static bool isRunning;
-        internal const string modName = "Auto Physics Warp";
-        internal const string directoryName = "AutoPhysicsWarp";
-        internal const string expectedPath = directoryName;
-        private List<Dependency> missingDeps = new List<Dependency>();
+        internal const string modName = "Decalc'o'mania";
+        internal const string directoryName = "Decalc'o'mania";
+        internal const string expectedPath = directoryName + "/Plugins";
+        private List<string[]> missingDeps = new List<string[]>();
         //GUI
         private GUIStyle green_label, white_label, yellow_label, red_label;
         private bool show_window;
         private Rect window_pos;
 
-        public void Awake()
-        {
-            if (isRunning)
-            {
-                Destroy(this);
-            }
-            isRunning = true;
-        }
-
         protected void Start()
         {
-            if (Assembly.GetExecutingAssembly() == null) return;
-            Logger.Log($"InstallCheck: {Assembly.GetExecutingAssembly().GetName().Name} v{Assembly.GetExecutingAssembly().GetName().Version}");
             #region Check the mod's dll installation.
-            IEnumerable<AssemblyLoader.LoadedAssembly> assemblies = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name);
-            IEnumerable<string> wrongPaths = assemblies.Where(a => a.url != expectedPath).Select(a => a.path.Replace(Path.GetFullPath(KSPUtil.ApplicationRootPath), ""));
-            if (wrongPaths.Any())
+            var badAssemblies = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name && a.url != expectedPath).Select(a => a.path.Replace(Path.GetFullPath(KSPUtil.ApplicationRootPath), ""));
+            if (badAssemblies.Any())
             {
-                
                 PopupDialog.SpawnPopupDialog
                     (
                     new Vector2(0.5f, 0.5f),
                     new Vector2(0.5f, 0.5f),
                     "Installation Check",
                     $"{modName}: Incorrect Installation",
-                    $"{modName} has been installed incorrectly and may not work properly.\n\nIncorrect path(s):\n- {String.Join("\n- ", wrongPaths.ToArray())}\n\nAll files should be located in GameData{Path.DirectorySeparatorChar}{directoryName}.",
+                    $"{modName} has been installed incorrectly and may not work properly.\n\nIncorrect path(s):\n- {String.Join("\n- ", badAssemblies.ToArray())}\n\nAll files should be located in GameData{Path.DirectorySeparatorChar}{directoryName}.",
                     "OK",
                     false,
                     HighLogic.UISkin
                     );
-                Logger.Warn($"The mod has been installed incorrectly and may not work properly.\nIncorrect path(s):\n- {String.Join("\n- ", wrongPaths.ToArray())}.\nAll files should be located in GameData{Path.DirectorySeparatorChar}{directoryName}.");
+                Logger.Warn($"The mod has been installed incorrectly and may not work properly. Incorrect path(s): \"{String.Join("\", \"", badAssemblies.ToArray())}\". All files should be located in GameData{Path.DirectorySeparatorChar}{directoryName}.");
             }
             #endregion
             #region Check for missing dependencies
-            //No dependencies
+            CheckDependency("Module Manager", "ModuleManager", "");
+            CheckDependency("Community Category Kit", "CCK", "CommunityCategoryKit");
 
-            if (missingDeps.Any())
+            if (missingDeps.Count > 0)
             {
                 show_window = true;
-                Logger.Warn($"One or more dependencies are missing or incorrectly installed:\n- {String.Join("\n- ", missingDeps.Select(e => e.InfoString).ToArray())}.\n{modName} requires these mods in order to work properly.");
+                Logger.Warn($"One or more dependencies are missing or incorrectly installed: \"{String.Join("\", \"", missingDeps.Select(e => e[0]).ToArray())}\". {modName} requires these mods in order to work properly.");
             }
             #endregion
         }
 
-        private void CheckDependency(string name, string assembly, string expectedPath)
+        /// <summary>
+        /// Check for missing or incorrectly installed dependency.
+        /// </summary>
+        /// <param name="name">The name to display in the GUI.</param>
+        /// <param name="assembly">The name of the assembly.</param>
+        /// <param name="expectedPath">The expected path for the assembly, relative to the GameData.</param>
+        private void CheckDependency(string name, string assemblyName, string expectedPath)
         {
             expectedPath = expectedPath.Replace('/', Path.DirectorySeparatorChar);
-            IEnumerable<AssemblyLoader.LoadedAssembly> assemblies = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == assembly);
+            var assemblies = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == assemblyName);
             if (assemblies.Any())
             {
-                IEnumerable<string> wrongPaths = assemblies.Where(a => a.url != expectedPath).Select(a => Path.GetDirectoryName(a.path.Replace(Path.GetFullPath(KSPUtil.ApplicationRootPath), "")));
+                var wrongPaths = assemblies.Where(a => a.url != expectedPath).Select(a => Path.GetDirectoryName(a.path.Replace(Path.GetFullPath(KSPUtil.ApplicationRootPath), "")));
                 if (wrongPaths.Any())
                 {
-                    Dependency dependency = new Dependency(name);
-                    dependency.SetPaths(wrongPaths, ("GameData" + Path.DirectorySeparatorChar + expectedPath).TrimEnd(Path.DirectorySeparatorChar));
-                    missingDeps.Add(dependency);
+                    missingDeps.Add(new string[] { name, String.Join(", ", wrongPaths), ("GameData" + Path.DirectorySeparatorChar + expectedPath).TrimEnd(Path.DirectorySeparatorChar) });
                 }
             }
             else
             {
-                Dependency dependency = new Dependency(name);
-                missingDeps.Add(dependency);
+                missingDeps.Add(new string[] { name });
             }
+
         }
 
         public void OnGUI()
@@ -90,10 +81,13 @@ namespace APW
             if (show_window)
             {
                 LoadStyles();
-                window_pos = GUILayout.Window(this.GetInstanceID(), this.window_pos, this.Window, modName, HighLogic.Skin.window, GUILayout.Height(0f));
+                window_pos = GUILayout.Window(this.GetInstanceID(), this.window_pos, this.Window, modName, HighLogic.Skin.window);
             }
         }
 
+        /// <summary>
+        /// Load the GUI styles.
+        /// </summary>
         private void LoadStyles()
         {
             green_label = new GUIStyle(HighLogic.Skin.label)
@@ -121,7 +115,6 @@ namespace APW
                 },
                 fontSize = 13,
                 alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold,
                 stretchWidth = true
             };
             red_label = new GUIStyle(HighLogic.Skin.label)
@@ -132,11 +125,14 @@ namespace APW
                 },
                 fontSize = 13,
                 alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold,
                 stretchWidth = true
             };
         }
 
+        /// <summary>
+        /// Draw the window on screen.
+        /// </summary>
+        /// <param name="id"></param>
         private void Window(int id)
         {
             GUILayout.BeginVertical(GUILayout.Width(400f));
@@ -156,24 +152,19 @@ namespace APW
             GUILayout.BeginVertical(HighLogic.Skin.box);
             foreach (var addon in missingDeps)
             {
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(addon.Name, new GUIStyle(addon.IsIncorrectlyInstalled ? yellow_label : red_label));
-                if (addon.IsIncorrectlyInstalled)
+                if (addon.Count() == 3)
                 {
-                    addon.Details_button();
+                    GUILayout.Label(addon[0], new GUIStyle(yellow_label) { fontStyle = FontStyle.Bold });
+                    GUILayout.BeginVertical(HighLogic.Skin.box);
+                    GUILayout.Label("Incorrect path(s):", green_label);
+                    GUILayout.Label(addon[1], white_label);
+                    GUILayout.Label("Expected path:", green_label);
+                    GUILayout.Label(addon[2], white_label);
+                    GUILayout.EndVertical();
                 }
-                GUILayout.EndHorizontal();
-                if (addon.IsIncorrectlyInstalled)
+                else
                 {
-                    if (addon.ShowDetails)
-                    {
-                        GUILayout.BeginVertical(HighLogic.Skin.box);
-                        GUILayout.Label("Incorrect path(s):", green_label);
-                        GUILayout.Label(addon.GetWrongPaths(), white_label);
-                        GUILayout.Label("Expected path:", green_label);
-                        GUILayout.Label(addon.GetExpectedPath(), white_label);
-                        GUILayout.EndVertical();
-                    }
+                    GUILayout.Label(addon[0], new GUIStyle(red_label) { fontStyle = FontStyle.Bold });
                 }
             }
             GUILayout.EndVertical();
@@ -187,70 +178,6 @@ namespace APW
             GUILayout.EndHorizontal();
             GUILayout.EndVertical();
             GUI.DragWindow();
-        }
-    }
-
-    class Dependency
-    {
-        public Dependency(string name)
-        {
-            this.Name = name;
-        }
-
-        public string Name { get; private set; } = "";
-        public bool ShowDetails { get; set; } = false;
-        public bool IsIncorrectlyInstalled { get; private set; } = false;
-        private IEnumerable<string> wrongPaths;
-        private string expectedPath;
-
-        public void SetPaths(IEnumerable<string> wp, string ep)
-        {
-            this.IsIncorrectlyInstalled = true;
-            this.wrongPaths = wp;
-            this.expectedPath = ep;
-        }
-
-        public string GetWrongPaths()
-        {
-            return string.Join(", ", this.wrongPaths);
-        }
-
-        public string GetExpectedPath()
-        {
-            return this.expectedPath;
-        }
-
-        public string InfoString
-        {
-            get
-            {
-                if (this.IsIncorrectlyInstalled)
-                {
-                    return this.Name + ": " + this.GetWrongPaths() + ". Expected path: " + this.GetExpectedPath();
-                }
-                else
-                {
-                    return this.Name;
-                }
-            }
-        }
-
-        public void Details_button()
-        {
-            if (!this.ShowDetails)
-            {
-                if (GUILayout.Button("+", new GUIStyle(HighLogic.Skin.button) { padding = new RectOffset(10, 10, HighLogic.Skin.button.padding.top, HighLogic.Skin.button.padding.bottom) }, GUILayout.ExpandWidth(false)))
-                {
-                    this.ShowDetails = true;
-                }
-            }
-            else
-            {
-                if (GUILayout.Button("-", new GUIStyle(HighLogic.Skin.button) { padding = new RectOffset(12, 12, HighLogic.Skin.button.padding.top, HighLogic.Skin.button.padding.bottom) }, GUILayout.ExpandWidth(false)))
-                {
-                    this.ShowDetails = false;
-                }
-            }
         }
     }
 }
