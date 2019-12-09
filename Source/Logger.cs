@@ -5,6 +5,7 @@ namespace Decalco
 {
     class Logger : MonoBehaviour
     {
+        public static string modName = "Decalc'o'mania";
         public static readonly string logPrefix = "[Decalc'o'mania]";
 
         public static void Log(string message)
