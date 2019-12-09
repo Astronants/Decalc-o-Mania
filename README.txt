@@ -1,4 +1,4 @@
-Decalc'o'mania v2.0.0
+Decalc'o'mania v2.0.1
 for KSP 1.8.x
 by Astronants
 Dependencies: CCK
@@ -21,6 +21,9 @@ This mod is compatible with TweakScale: https://github.com/net-lisias-ksp/TweakS
 If you find bugs or have suggestions, let me know on Github.
 
 ==CHANGELOG==
+2.0.1
+- Fixed bug with the patch not being deleted at the end of the loading
+- Updated InstallCheck and ModuleManager
 2.0.0
 - Modified file layout, delete the old version before updating the mod!
 - Recompiled for KSP 1.8.x
