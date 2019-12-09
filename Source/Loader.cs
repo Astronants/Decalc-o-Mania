@@ -10,9 +10,10 @@ namespace Decalco
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     class Loader : MonoBehaviour
     {
-        private readonly string modName = "Decalc'o'mania";
-        public readonly string assembly_dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).Replace(Path.DirectorySeparatorChar, '/');
-        private string textures_dir, GameData, patch_path;
+        public static readonly string assembly_dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).Replace(Path.DirectorySeparatorChar, '/');
+        private static readonly string GameData = assembly_dir.Replace("Decalc'o'mania" + "/Plugins", "");
+        private static readonly string textures_dir = assembly_dir.Replace("Plugins", "Textures");
+        private static readonly string patch_path = assembly_dir + "/patch.cfg";
         private static bool isRunning = false;
 
         public void Awake()
@@ -31,9 +32,6 @@ namespace Decalco
             {
                 File.Delete(patch_path);
             }
-            GameData = assembly_dir.Replace("Decalc'o'mania" + "/Plugins", "");
-            textures_dir = assembly_dir.Replace("Plugins", "Textures");
-            patch_path = assembly_dir + "/patch.cfg";
             string[] files = new string[0];
             try
             {
@@ -41,9 +39,7 @@ namespace Decalco
             }
             catch (Exception e)
             {
-                ScreenMessages.PostScreenMessage($"[{modName}]: {Localizer.Format("#autoLOC_Decalco_Patch_Err")}", 30, ScreenMessageStyle.UPPER_CENTER, Color.red);
-                Logger.Error("An error has occured while getting the image files.", e);
-                Destroy(this);
+                Exception(e);
             }
             if (files.Length == 0) return;
 
@@ -59,7 +55,15 @@ namespace Decalco
                     patch.WriteLine("@PART[*]:HAS[#tags[cck_decal,wide,*]]:Final{\n@MODULE[ModulePartVariants]{");
                     foreach (string tex in wides)
                     {
-                        LoadTexture(patch, tex);
+                        try
+                        {
+                            patch.WriteLine(LoadTexture(tex));
+                        }
+                        catch (Exception e)
+                        {
+                            Exception(e);
+                            patch.Close();
+                        }
                     }
                     patch.WriteLine("}}");
                 }
@@ -69,7 +73,15 @@ namespace Decalco
                     patch.WriteLine("@PART[*]:HAS[#tags[cck_decal,long,*]]:Final{\n@MODULE[ModulePartVariants]{");
                     foreach (string tex in longs)
                     {
-                        LoadTexture(patch, tex);
+                        try
+                        {
+                            patch.WriteLine(LoadTexture(tex));
+                        }
+                        catch (Exception e)
+                        {
+                            Exception(e);
+                            patch.Close();
+                        }
                     }
                     patch.WriteLine("}}");
                 }
@@ -77,16 +89,18 @@ namespace Decalco
             }
             catch (Exception e)
             {
-                ScreenMessages.PostScreenMessage($"[{modName}]: {Localizer.Format("#autoLOC_Decalco_Patch_Err")}", 30, ScreenMessageStyle.UPPER_CENTER, Color.red);
-                Logger.Error("An error has occured while writing the patch!", e);
+                Exception(e);
                 patch.Close();
-                if (File.Exists(patch_path))
-                {
-                    File.Delete(patch_path);
-                }
-                Destroy(this);
             }
             #endregion
+        }
+
+        public void OnDestroy()
+        {
+            if (File.Exists(patch_path))
+            {
+                File.Delete(patch_path);
+            }
         }
 
         private bool IsLong(string texture)
@@ -97,28 +111,30 @@ namespace Decalco
             return img.height > img.width;
         }
 
-        private void LoadTexture(StreamWriter patch, string texture)
+        /// <summary>
+        /// Add the content to load an image file in the patch.
+        /// </summary>
+        /// <param name="texture">The image file path.</param>
+        private string[] LoadTexture(string texture)
         {
             Logger.Log("Load(Texture): " + texture.Replace(GameData, "").Replace(Path.GetExtension(texture), "").Replace(Path.DirectorySeparatorChar, '/'));
-            try
+            string[] lines = new string[] { };
+            lines = new string[]
             {
-                patch.WriteLine("VARIANT{");
-                patch.WriteLine(string.Format("name = {0}\ndisplayName = {0}\nthemeName = {0}\nprimaryColor = #cc0e0e\nsecondaryColor = #000000", Path.GetFileName(texture).Replace(Path.GetExtension(texture), "")));
-                patch.WriteLine("TEXTURE{");
-                patch.WriteLine(string.Format("mainTextureURL = {0}", texture.Replace(GameData, "").Replace(Path.GetExtension(texture), "").Replace(Path.DirectorySeparatorChar, '/')));
-                patch.WriteLine("}}");
-            }
-            catch (Exception e)
-            {
-                ScreenMessages.PostScreenMessage($"[{modName}]: {Localizer.Format("#autoLOC_Decalco_Patch_Err")}", 30, ScreenMessageStyle.UPPER_CENTER, Color.red);
-                Logger.Error("An error has occured while loading the texture.", e);
-                patch.Close();
-                if (File.Exists(patch_path))
-                {
-                    File.Delete(patch_path);
-                }
-                Destroy(this);
-            }
+                "VARIANT{",
+                string.Format("name = {0}\ndisplayName = {0}\nthemeName = {0}\nprimaryColor = #cc0e0e\nsecondaryColor = #000000", Path.GetFileName(texture).Replace(Path.GetExtension(texture), "")),
+                "TEXTURE{",
+                string.Format("mainTextureURL = {0}", texture.Replace(GameData, "").Replace(Path.GetExtension(texture), "").Replace(Path.DirectorySeparatorChar, '/')),
+                "}}"
+            };
+            return lines;
+        }
+
+        private void Exception(Exception e)
+        {
+            ScreenMessages.PostScreenMessage($"[{Logger.modName}]: {Localizer.Format("#autoLOC_Decalco_Patch_Err")}", 30, ScreenMessageStyle.UPPER_CENTER, Color.red);
+            Logger.Error("An error has occured while writing the patch.", e);
+            Destroy(this);
         }
     }
 }
