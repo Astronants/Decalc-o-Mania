@@ -1,4 +1,4 @@
-Decalc'o'mania v2.0.1
+Decalc'o'mania v2.0.2
 for KSP 1.8.x
 by Astronants
 Dependencies: CCK
@@ -21,6 +21,9 @@ This mod is compatible with TweakScale: https://github.com/net-lisias-ksp/TweakS
 If you find bugs or have suggestions, let me know on Github.
 
 ==CHANGELOG==
+2.0.2
+- Fixed bug with the patch not being written correctly
+- Known bug: due to ModuleManager running before Decalc'o'mania, you have to start the game twice to apply the changes to the textures.
 2.0.1
 - Fixed bug with the patch not being deleted at the end of the loading
 - Updated InstallCheck and ModuleManager
