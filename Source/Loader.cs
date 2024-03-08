@@ -7,41 +7,39 @@ namespace Decalco
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     class Loader : MonoBehaviour
     {
-        PatchWriter patchWriter = new PatchWriter();
-        TextureHandler textureHandler = new TextureHandler();
-
         public void Start()
         {
-            textureHandler.LoadTextures();
+            TextureHandler.Instance.LoadTextures();
 
-            if (textureHandler.CompareToCache() == true || (!System.IO.File.Exists(PatchWriter.patch_path) && textureHandler.textures_all.Count() == 0))
+            if ((!System.IO.File.Exists(PatchWriter.patch_path) && TextureHandler.Instance.textures_all.Count() == 0) || TextureHandler.Instance.CompareToCache() == true)
             {
                 Destroy(this);
                 return;
             }
-            textureHandler.CreateCache();
-            patchWriter.Initialize();
+
+            TextureHandler.Instance.CreateCache();
+            PatchWriter.Instance.Initialize();
 
             foreach (var type in Enum.GetValues(typeof(TextureHandler.TextureType)).Cast<TextureHandler.TextureType>())
             {
-                foreach (string texture in textureHandler.GetList(type))
+                foreach (string texture in TextureHandler.Instance.GetList(type))
                 {
                     string textureWithoutExt = texture.Replace(System.IO.Path.GetExtension(texture), "");
 
-                    Logger.Log("Load(Texture): " + texture.Replace(System.IO.Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/"), ""));
+                    Logger.Log("Load(Texture): " + texture);
 
-                    patchWriter.AddLinesToType(type, new string[] {
+                    PatchWriter.Instance.AddLinesToType(type, new string[] {
                         "VARIANT{",
                         string.Format("name = {0}\ndisplayName = {0}\nthemeName = {0}\nprimaryColor = #cc0e0e\nsecondaryColor = #000000", System.IO.Path.GetFileName(textureWithoutExt)),
                         "TEXTURE{",
-                        "mainTextureURL = " + textureWithoutExt.Replace(System.IO.Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/"), ""),
+                        "mainTextureURL = " + textureWithoutExt,
                         "}}"
                     });
                 }
             }
 
-            patchWriter.EndPatch();
-            patchWriter.WritePatch();
+            PatchWriter.Instance.EndPatch();
+            PatchWriter.Instance.WritePatch();
         }
 
     }

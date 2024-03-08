@@ -6,10 +6,13 @@ using UnityEngine;
 
 namespace Decalco
 {
-    class PatchWriter
+    internal class PatchWriter
     {
-        public static readonly string patch_path = Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/Decalc'o'mania/Plugins/patch.cfg");
-        private Dictionary<string, List<string>> patchContent = new Dictionary<string, List<string>>();
+        private static PatchWriter instance = null;
+        public static PatchWriter Instance => instance = instance ?? new PatchWriter();
+
+        internal static readonly string patch_path = Path.Combine(Utils.ModDir, "Plugins", "patch.cfg");
+        private readonly Dictionary<string, List<string>> patchContent = new Dictionary<string, List<string>>();
         
         /// <summary>
         /// Initialize the PatchWriter with the first lines of each type

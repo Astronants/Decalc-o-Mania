@@ -6,29 +6,37 @@ using UnityEngine;
 
 namespace Decalco
 {
-    class TextureHandler
+    internal class TextureHandler
     {
-        private static TextureHandler instance;
-        public static TextureHandler Instance => instance;
-        private static readonly string texture_dir = Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/Decalc'o'mania/Textures");
+        private static TextureHandler instance = null;
+        public static TextureHandler Instance => instance = instance ?? new TextureHandler();
+
+        internal List<string> textures_all = new List<string>();
+        private List<string> textures_long = new List<string>();
+        private List<string> textures_wide = new List<string>();
         /// <summary>
         /// The cache file is here to prevent to re-write the patch if no changes have been detected.
         /// </summary>
-        private static readonly string cache_file = Path.Combine(Path.GetDirectoryName(PatchWriter.patch_path), "decalco.cache");
-        public List<string> textures_all = new List<string>();
-        private List<string> textures_long = new List<string>();
-        private List<string> textures_wide = new List<string>();
+        internal static readonly string cache_file = Path.Combine(Utils.ModDir, "Plugins", "decalco.cache");
 
-        public enum TextureType
+        internal enum TextureType
         {
             Wide,
             Long
         }
 
-        public TextureHandler()
+        internal bool ValidateCache()
         {
-            LoadTextures();
-            instance = this;
+            if (!File.Exists(cache_file)) return false;
+
+            using (var sr = new StreamReader(cache_file))
+            {
+                string header = sr.ReadLine();
+                string modVersion = typeof(Loader).Assembly.GetName().Version.ToString();
+                if (!string.Equals(header, modVersion)) return false;
+
+                return true;
+            }
         }
 
         /// <summary>
@@ -36,45 +44,47 @@ namespace Decalco
         /// </summary>
         internal bool CompareToCache()
         {
-            //If the cache file exists but not the config file => delete the cache file
-            if (!File.Exists(PatchWriter.patch_path) && File.Exists(cache_file))
-                File.Delete(cache_file);
-
-            //If the cache file doesn't exists => create a new one and return false;
-            if (!File.Exists(cache_file))
+            //If the cache file doesn't exist or is from a different version => return false
+            if (ValidateCache() == false)
             {
-                CreateCache();
+                if (File.Exists(cache_file)) File.Delete(cache_file);
                 return false;
             }
 
+            //If the cache file exists but not the config file => delete the cache file
+            if (!File.Exists(PatchWriter.patch_path)) File.Delete(cache_file);
+
             using (var sr = new StreamReader(cache_file))
             {
-                string[] files = sr.ReadToEnd().Split('\n').Where(line => !string.IsNullOrWhiteSpace(line)).ToArray();
-                string[] alltex = textures_all.Select(elem => elem.Replace(Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/"), "")).ToArray();
-                
-                if (files.Except(alltex).Count() > 0 || alltex.Except(files).Count() > 0)
+                List<string> cache_content = sr.ReadToEnd().Split('\n').Where(line => !string.IsNullOrWhiteSpace(line)).Skip(1).ToList();
+                //If there is any difference between both lists => return false
+                if (cache_content.Except(textures_all).Count() > 0 || textures_all.Except(cache_content).Count() > 0)
                     return false;
             }
 
+            Logger.Log("Cache matches textures list");
             return true;
         }
 
-        public void CreateCache()
+        internal void CreateCache()
         {
             if (File.Exists(cache_file))
                 File.Delete(cache_file);
 
             using (StreamWriter sw = new StreamWriter(cache_file))
             {
-                string[] alltex = textures_all.Select(elem => elem.Replace(Path.Combine(KSPUtil.ApplicationRootPath.Replace('\\', '/'), "GameData/"), "")).ToArray();
-                sw.Write(string.Join("\n", alltex));
+                sw.WriteLine(typeof(Loader).Assembly.GetName().Version.ToString());
+                sw.Write(string.Join("\n", textures_all));
             }
         }
 
         internal void LoadTextures()
         {
-            textures_all = Directory.EnumerateFiles(texture_dir, "*.png", SearchOption.AllDirectories).Where(f => new DirectoryInfo(Path.GetDirectoryName(f)).Name != "agencies" && new DirectoryInfo(Path.GetDirectoryName(f)).Name != "templates").Select(path => path.Replace('\\', '/')).ToList(); ;
-
+            textures_all = Directory.EnumerateFiles(Path.Combine(Utils.ModDir, "Textures"), "*.png", SearchOption.AllDirectories)
+                .Where(f => new DirectoryInfo(Path.GetDirectoryName(f)).Name != "agencies" && new DirectoryInfo(Path.GetDirectoryName(f)).Name != "templates")
+                .Select(path => path.Replace('\\', '/').Replace(Utils.GameDataDir + '/', ""))
+                .ToList();
+            
             if (textures_all.Count() == 0)
                 return;
 
@@ -83,7 +93,7 @@ namespace Decalco
         }
 
         /// <exception cref="ArgumentOutOfRangeException"/>
-        public List<string> GetList(TextureType type)
+        internal List<string> GetList(TextureType type)
         {
             switch (type)
             {
@@ -98,8 +108,11 @@ namespace Decalco
 
         private bool IsLong(string texture)
         {
-            Texture2D img = new Texture2D(1, 1);
-            img.LoadImage(File.ReadAllBytes(texture));
+            //Texture2D img = GameDatabase.Instance.GetTexture(texture, false);
+            byte[] img_data = File.ReadAllBytes(Path.Combine(Utils.GameDataDir, texture));
+            Texture2D img = new Texture2D(2, 2);
+            img.LoadImage(img_data);
+
             return img.height > img.width;
         }
     }

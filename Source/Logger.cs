@@ -3,26 +3,26 @@ using UnityEngine;
 
 namespace Decalco
 {
-    class Logger : MonoBehaviour
+    internal class Logger : MonoBehaviour
     {
-        public const string modName = "Decalc'o'mania";
-        public const string logPrefix = "[Decalc'o'mania]: ";
+        internal const string modName = "Decalc'o'mania";
+        internal const string logPrefix = "[Decalc'o'mania]: ";
 
-        public static void Log(string message)
+        internal static void Log(string message)
         {
             Debug.Log(logPrefix + message);
         }
 
-        public static void Warn(string message)
+        internal static void Warn(string message)
         {
             Debug.LogWarning(logPrefix + message);
         }
 
-        public static void Error(string message)
+        internal static void Error(string message)
         {
             Debug.LogError(logPrefix + message);
         }
-        public static void Error(string message, Exception e)
+        internal static void Error(string message, Exception e)
         {
             Debug.LogError(logPrefix + message);
             Debug.LogException(e);
