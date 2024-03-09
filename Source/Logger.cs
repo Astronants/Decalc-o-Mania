@@ -6,6 +6,7 @@ namespace Decalco
     internal class Logger : MonoBehaviour
     {
         internal const string modName = "Decalc'o'mania";
+        internal static readonly string modVersion = typeof(Loader).Assembly.GetName().Version.ToString();
         internal const string logPrefix = "[Decalc'o'mania]: ";
 
         internal static void Log(string message)

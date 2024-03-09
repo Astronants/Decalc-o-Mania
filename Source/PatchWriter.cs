@@ -1,6 +1,7 @@
-﻿using System;
-using System.IO;
+﻿using Smooth.Collections;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -11,9 +12,10 @@ namespace Decalco
         private static PatchWriter instance = null;
         public static PatchWriter Instance => instance = instance ?? new PatchWriter();
 
-        internal static readonly string patch_path = Path.Combine(Utils.ModDir, "Plugins", "patch.cfg");
+        internal static readonly string patch_path = Path.Combine(DirUtils.ModDir, "Plugins", "patch.cfg");
         private readonly Dictionary<string, List<string>> patchContent = new Dictionary<string, List<string>>();
-        
+        //private ConfigNode patch = new ConfigNode();
+
         /// <summary>
         /// Initialize the PatchWriter with the first lines of each type
         /// </summary>
@@ -24,6 +26,7 @@ namespace Decalco
                 string typeName = Enum.GetName(typeof(TextureHandler.TextureType), type).ToLower();
                 if (TextureHandler.Instance.GetList(type).Count() > 0)
                 {
+                    //patch.AddNode($"@PART[*]:HAS[#tags[cck_decal,{typeName},*]]:Final");
                     patchContent[typeName] = new List<string>()
                     {
                         $"@PART[*]:HAS[#tags[cck_decal,{typeName},*]]:Final",
@@ -34,17 +37,20 @@ namespace Decalco
         }
 
         /// <exception cref="ArgumentOutOfRangeException"/>
-        internal void AddLinesToType(TextureHandler.TextureType type, string[] lines)
+        internal void AddTextureToType(TextureHandler.TextureType type, string texture)
         {
             string typeName = Enum.GetName(typeof(TextureHandler.TextureType), type).ToLower();
 
             if (!patchContent.ContainsKey(typeName))
                 throw new ArgumentOutOfRangeException();
 
-            foreach (string line in lines)
-            {
-                patchContent[typeName].Add(line);
-            }
+            patchContent[typeName].AddAll(
+                "VARIANT{",
+                string.Format("name = {0}\ndisplayName = {0}\nthemeName = {0}\nprimaryColor = #cc0e0e\nsecondaryColor = #000000", System.IO.Path.GetFileName(texture)),
+                "TEXTURE{",
+                "mainTextureURL = " + texture,
+                "}}"
+            );
         }
 
         /// <summary>
@@ -91,7 +97,7 @@ namespace Decalco
             catch (Exception e)
             {
                 ScreenMessages.PostScreenMessage(Logger.logPrefix + KSP.Localization.Localizer.Format("#autoLOC_Decalco_patch_Err"), 5f, ScreenMessageStyle.UPPER_CENTER, Color.red);
-                throw new Exception(KSP.Localization.Localizer.Format(Logger.logPrefix + "#autoLOC_Decalco_patch_Err"), e);
+                Logger.Error(KSP.Localization.Localizer.Format("#autoLOC_Decalco_patch_Err"), e);
             }
         }
 
