@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -10,105 +9,146 @@ namespace Decalco
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     class Loader : MonoBehaviour
     {
-        /// <summary>
-        /// The cache file is here to prevent to re-write the patch if no changes have been detected.
-        /// </summary>
         internal static readonly string cache_file = Path.Combine(DirUtils.ModDir, "Plugins", "decalco.cache");
+        internal static readonly string patch_file = Path.Combine(DirUtils.ModDir, "Plugins", "patch.cfg");
 
         public void Start()
         {
             TextureHandler.Instance.LoadTextures();
 
-            if ((!System.IO.File.Exists(PatchWriter.patch_path) && TextureHandler.Instance.tex_all.Count() == 0) || CompareToCache() == true)
+            bool useCache = ValidateCache();
+
+            if ((!File.Exists(patch_file) && TextureHandler.Instance.tex_all.Count() == 0) || useCache)
             {
                 Destroy(this);
+                if (useCache) return;
+
+                try
+                {
+                    if (File.Exists(cache_file)) File.Delete(cache_file);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error("An error occured while trying to delete cache file", e);
+                }
                 return;
             }
 
-            PatchWriter.Instance.Initialize();
-
-            foreach (var type in Enum.GetValues(typeof(TextureHandler.TextureType)).Cast<TextureHandler.TextureType>())
+            //Create patch config
+            ConfigNode patch = new ConfigNode();
+            patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
+            patch.AddNode(CreatePatchNode("long", TextureHandler.Instance.tex_long));
+            try
             {
-                foreach (string texture in TextureHandler.Instance.GetList(type))
-                {
-                    Logger.Log("Load(Texture): " + texture);
-                    PatchWriter.Instance.AddTextureToType(type, texture.Replace(System.IO.Path.GetExtension(texture), ""));
-                }
+                Logger.Log("Saving patch...");
+                patch.Save(patch_file);
+                CreateCache();
+                PopupDialog dialog = PopupDialog.SpawnPopupDialog(
+                    new MultiOptionDialog("DecalcoPatchSuccess",
+                        "The patch was successfully updated! Restart the game to apply the changes.",
+                        Logger.modName, HighLogic.UISkin,
+                        new DialogGUIButton("OK", () => dialog = null)),
+                    true,
+                    HighLogic.UISkin);
+                return;
+            }
+            catch (Exception e)
+            {
+                Logger.Error("An error occured while creating the patch", e);
             }
 
-            PatchWriter.Instance.EndPatch();
-            PatchWriter.Instance.WritePatch();
-            CreateCache();
-        }
-
-        internal bool ValidateCache()
-        {
-            if (!File.Exists(cache_file)) return false;
-            // validate cache's header
-            using (var sr = new StreamReader(cache_file))
+            try
             {
-                string[] header = sr.ReadLine().Split(' ');
-                if (header.Length < 2) return false;
-
-                // compare mod versions to ensure patches are up to date with every mod update
-                if (!string.Equals(header[0], Logger.modVersion)) return false;
-
-                // compare patch's hash with cached value
-                using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
-                {
-                    byte[] contentBytes = File.ReadAllBytes(PatchWriter.patch_path);
-                    sha.ComputeHash(contentBytes);
-                    string filesha = BitConverter.ToString(sha.Hash);
-                    if (!string.Equals(header[1], filesha)) return false;
-                }
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Returns whether or not the textures list and the cache are identical.
-        /// </summary>
-        internal bool CompareToCache()
-        {
-            //If the cache file doesn't exist or is from a different version => return false
-            if (ValidateCache() == false)
-            {
+                if (File.Exists(patch_file)) File.Delete(patch_file);
                 if (File.Exists(cache_file)) File.Delete(cache_file);
-                return false;
             }
-
-            //If the cache file exists but not the config file => delete the cache file
-            if (!File.Exists(PatchWriter.patch_path)) File.Delete(cache_file);
-
-            using (var sr = new StreamReader(cache_file))
+            catch (Exception e)
             {
-                List<string> cache_content = sr.ReadToEnd().Split('\n').Where(line => !string.IsNullOrWhiteSpace(line)).Skip(1).ToList();
-                //If there is any difference between both lists => return false
-                if (cache_content.Except(TextureHandler.Instance.tex_all).Count() > 0 || TextureHandler.Instance.tex_all.Except(cache_content).Count() > 0)
-                    return false;
+                Logger.Error("An error occured while trying to delete erroneous files", e);
             }
-
-            Logger.Log("Cache matches textures list and patch file.");
-            return true;
         }
-        internal void CreateCache()
-        {
-            if (File.Exists(cache_file))
-                File.Delete(cache_file);
 
-            using (StreamWriter sw = new StreamWriter(cache_file))
+        private ConfigNode CreatePatchNode(string typeName, List<string> textureList)
+        {
+            ConfigNode config = new ConfigNode($"@PART[*]:HAS[#tags[cck_decal,{typeName},*]]:Final");
+            ConfigNode module = config.AddNode("@MODULE[ModulePartVariants]");
+            foreach (string texture in textureList)
             {
-                // write cache header
-                using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+                ConfigNode variant = module.AddNode("VARIANT");
+                string name = Path.GetFileNameWithoutExtension(texture);
+                variant.AddValue("name", name);
+                variant.AddValue("displayName", name);
+                variant.AddValue("themeName", "Decalcomania");
+                variant.AddValue("primaryColor", "#cc0e0e");
+                variant.AddValue("secondaryColor", "#000000");
+                variant.AddNode("TEXTURE").AddValue("mainTextureURL", UrlDir.StripExtension(texture, ".png"));
+            }
+            return config;
+        }
+
+        private bool ValidateCache()
+        {
+            using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+            {
+                bool isValid = false;
+                if (File.Exists(cache_file) && File.Exists(patch_file))
                 {
-                    byte[] contentBytes = File.ReadAllBytes(PatchWriter.patch_path);
+                    // hash patch file
+                    byte[] contentBytes = File.ReadAllBytes(patch_file);
                     sha.ComputeHash(contentBytes);
-                    string filesha = BitConverter.ToString(sha.Hash);
-                    sw.WriteLine($"{Logger.modVersion} {filesha}");
+                    string patchSHA = BitConverter.ToString(sha.Hash);
+
+                    ConfigNode cacheConfig = ConfigNode.Load(cache_file);
+                    if (cacheConfig != null && cacheConfig.HasValue("version") && cacheConfig.HasValue("patchSHA") && cacheConfig.HasValue("textures"))
+                    {
+                        string version = cacheConfig.GetValue("version");
+                        string cachedSHA = cacheConfig.GetValue("patchSHA");
+                        IEnumerable<string> textures = cacheConfig.GetValue("textures").Split(',');
+
+                        isValid = version.Equals(Logger.modVersion);
+                        isValid &= cachedSHA.Equals(patchSHA);
+                        isValid &= textures.Except(TextureHandler.Instance.tex_all).Count() == 0;
+                        isValid &= TextureHandler.Instance.tex_all.Except(textures).Count() == 0;
+                    }
+                    else Logger.Warn("Unable to read cache file");
                 }
-                // write texture list
-                sw.Write(string.Join("\n", TextureHandler.Instance.tex_all));
+                return isValid;
+            }
+        }
+
+        private void CreateCache()
+        {
+            Logger.Log("Creating cache...");
+
+            using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+            {
+                ConfigNode cache = new ConfigNode();
+
+                byte[] contentBytes = File.ReadAllBytes(patch_file);
+                sha.ComputeHash(contentBytes);
+                string patchSHA = BitConverter.ToString(sha.Hash);
+
+                cache.AddValue("version", Logger.modVersion);
+                cache.AddValue("patchSHA", patchSHA);
+                cache.AddValue("textures", String.Join(",", TextureHandler.Instance.tex_all));
+                try
+                {
+                    cache.Save(cache_file);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    Logger.Error("An error occured while saving the cache", e);
+                }
+
+                try
+                {
+                    if (File.Exists(cache_file)) File.Delete(cache_file);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error("An error occured while trying to delete cache file", e);
+                }
             }
         }
 
