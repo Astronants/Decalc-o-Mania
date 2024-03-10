@@ -34,10 +34,14 @@ namespace Decalco
                 return;
             }
 
+            TextureHandler.Instance.SortTextures();
+
             //Create patch config
             ConfigNode patch = new ConfigNode();
-            patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
-            patch.AddNode(CreatePatchNode("long", TextureHandler.Instance.tex_long));
+            if (TextureHandler.Instance.tex_wide.Count() > 0)
+                patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
+            if (TextureHandler.Instance.tex_long.Count() > 0)
+                patch.AddNode(CreatePatchNode("long", TextureHandler.Instance.tex_long));
             try
             {
                 Logger.Log("Saving patch...");
@@ -99,18 +103,23 @@ namespace Decalco
                     string patchSHA = BitConverter.ToString(sha.Hash);
 
                     ConfigNode cacheConfig = ConfigNode.Load(cache_file);
-                    if (cacheConfig != null && cacheConfig.HasValue("version") && cacheConfig.HasValue("patchSHA") && cacheConfig.HasValue("textures"))
+                    if (cacheConfig != null && cacheConfig.HasValue("version") && cacheConfig.HasValue("patchSHA"))
                     {
                         string version = cacheConfig.GetValue("version");
                         string cachedSHA = cacheConfig.GetValue("patchSHA");
-                        IEnumerable<string> textures = cacheConfig.GetValue("textures").Split(',');
+                        ConfigNode[] textureNodes = cacheConfig.GetNodes("TEXTURE");
+                        List<string> textures = new List<string>();
+                        foreach (ConfigNode node in textureNodes)
+                        {
+                            textures.Add(node.GetValue("mainTextureURL"));
+                        }
 
                         isValid = version.Equals(Logger.modVersion);
                         isValid &= cachedSHA.Equals(patchSHA);
                         isValid &= textures.Except(TextureHandler.Instance.tex_all).Count() == 0;
                         isValid &= TextureHandler.Instance.tex_all.Except(textures).Count() == 0;
                     }
-                    else Logger.Warn("Unable to read cache file");
+                    else Logger.Warn("Unable to read the cache");
                 }
                 return isValid;
             }
@@ -130,7 +139,11 @@ namespace Decalco
 
                 cache.AddValue("version", Logger.modVersion);
                 cache.AddValue("patchSHA", patchSHA);
-                cache.AddValue("textures", String.Join(",", TextureHandler.Instance.tex_all));
+                foreach (string texture in TextureHandler.Instance.tex_all)
+                {
+                    cache.AddNode("TEXTURE").AddValue("mainTextureURL", texture);
+                }
+
                 try
                 {
                     cache.Save(cache_file);

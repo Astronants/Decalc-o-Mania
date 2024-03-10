@@ -18,12 +18,13 @@ namespace Decalco
         {
             tex_all = Directory.EnumerateFiles(Path.Combine(DirUtils.ModDir, "Textures"), "*.png", SearchOption.AllDirectories)
                 .Where(f => new DirectoryInfo(Path.GetDirectoryName(f)).Name != "agencies" && new DirectoryInfo(Path.GetDirectoryName(f)).Name != "templates")
-                .Select(path => path.Replace('\\', '/').Replace(DirUtils.GameDataDir + '/', "")).ToList();
+                .Select(path => KSPUtil.GetRelativePath(path, DirUtils.GameDataDir)).ToList();
 
             Logger.Log($"{tex_all.Count()} Textures found");
+        }
 
-            if (tex_all.Count() == 0) return;
-
+        internal void SortTextures()
+        {
             tex_long = tex_all.Where(tex => IsLong(tex)).ToList();
             tex_wide = tex_all.Except(tex_long).ToList();
         }
