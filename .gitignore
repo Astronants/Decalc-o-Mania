@@ -8,3 +8,5 @@ Output/
 
 *.log
 *.pdb
+*.zip
+ModuleManager*.dll
