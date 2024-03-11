@@ -32,7 +32,7 @@ namespace Decalco
         private bool IsLong(string texture)
         {
             Logger.Log("Load(Texture): " + texture);
-            //Texture2D img = GameDatabase.Instance.GetTexture(texture, false); // <- I'd rather use KSP's database, but as long as i rely on ModuleManager to apply the variants I can't afford to wait for the game to load them first
+            //Texture2D img = GameDatabase.Instance.GetTexture(texture, false);
             byte[] img_data = File.ReadAllBytes(Path.Combine(DirUtils.GameDataDir, texture));
             Texture2D img = new Texture2D(2, 2);
             img.LoadImage(img_data);

@@ -15,32 +15,25 @@ namespace Decalco
         public void Awake()
         {
             TextureHandler.Instance.LoadTextures();
-
             bool useCache = ValidateCache();
 
             if ((!File.Exists(patch_file) && TextureHandler.Instance.tex_all.Count() == 0) || useCache)
             {
                 Destroy(this);
                 if (useCache)
-                {
                     Logger.Log("Patch will be loaded from cache");
-                    return;
-                }
+                else
+                    TryDeleteCache();
 
-                try
-                {
-                    if (File.Exists(cache_file)) File.Delete(cache_file);
-                }
-                catch (Exception e)
-                {
-                    Logger.Error("An error occured while trying to delete cache file", e);
-                }
                 return;
             }
 
             TextureHandler.Instance.SortTextures();
+            CreatePatchFile();
+        }
 
-            // create patch config
+        private void CreatePatchFile()
+        {
             ConfigNode patch = new ConfigNode();
             if (TextureHandler.Instance.tex_wide.Count() > 0)
                 patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
@@ -52,12 +45,12 @@ namespace Decalco
                 patch.Save(patch_file);
                 CreateCache();
                 /*PopupDialog dialog = PopupDialog.SpawnPopupDialog(
-                    new MultiOptionDialog("DecalcoPatchSuccess",
-                        "The patch was successfully updated! Restart the game to apply the changes.",
-                        Logger.modName, HighLogic.UISkin,
-                        new DialogGUIButton("OK", () => dialog = null)),
-                    true,
-                    HighLogic.UISkin);*/
+                new MultiOptionDialog("DecalcoPatchSuccess",
+                    "The patch was successfully updated! Restart the game to apply the changes.",
+                    Logger.modName, HighLogic.UISkin,
+                    new DialogGUIButton("OK", () => dialog = null)),
+                true,
+                HighLogic.UISkin);*/
                 return;
             }
             catch (Exception e)
@@ -101,18 +94,18 @@ namespace Decalco
                 bool isValid = false;
                 if (File.Exists(cache_file) && File.Exists(patch_file))
                 {
-                    // hash patch file
+                    // hash patch file contents
                     byte[] contentBytes = File.ReadAllBytes(patch_file);
                     sha.ComputeHash(contentBytes);
                     string patchSHA = BitConverter.ToString(sha.Hash);
-
+                    // read cache file
                     ConfigNode cacheConfig = ConfigNode.Load(cache_file);
                     if (cacheConfig != null && cacheConfig.HasValue("version") && cacheConfig.HasValue("patchSHA"))
                     {
                         string version = cacheConfig.GetValue("version");
                         string cachedSHA = cacheConfig.GetValue("patchSHA");
-                        ConfigNode[] textureNodes = cacheConfig.GetNodes("TEXTURE");
                         List<string> textures = new List<string>();
+                        ConfigNode[] textureNodes = cacheConfig.GetNodes("TEXTURE");
                         foreach (ConfigNode node in textureNodes)
                         {
                             textures.Add(node.GetValue("mainTextureURL"));
@@ -148,7 +141,7 @@ namespace Decalco
 
                 try
                 {
-                    Logger.Log("Creating cache...");
+                    Logger.Log("Saving cache...");
                     cache.Save(cache_file);
                     return;
                 }
@@ -157,16 +150,20 @@ namespace Decalco
                     Logger.Error("An error occured while saving the cache", e);
                 }
 
-                try
-                {
-                    if (File.Exists(cache_file)) File.Delete(cache_file);
-                }
-                catch (Exception e)
-                {
-                    Logger.Error("An error occured while trying to delete cache file", e);
-                }
+                TryDeleteCache();
             }
         }
 
+        private void TryDeleteCache()
+        {
+            try
+            {
+                if (File.Exists(cache_file)) File.Delete(cache_file);
+            }
+            catch (Exception e)
+            {
+                Logger.Error("An error occured while trying to delete cache file", e);
+            }
+        }
     }
 }
