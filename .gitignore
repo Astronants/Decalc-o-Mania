@@ -1,0 +1,10 @@
+.git/
+.vs/
+bin/
+obj/
+Output/
+*.sln
+*.user
+
+*.log
+*.pdb
