@@ -1,7 +1,7 @@
-Decalc'o'mania v2.0.2
-for KSP 1.8.x
+Decalc'o'mania v2.1.0
+for KSP 1.8.x - 1.12.x
 by Astronants
-Dependencies: CCK
+Dependencies: CommunityCategoryKit, ModuleManager
 
 Add decals to your rockets!
 
@@ -21,6 +21,11 @@ This mod is compatible with TweakScale: https://github.com/net-lisias-ksp/TweakS
 If you find bugs or have suggestions, let me know on Github.
 
 ==CHANGELOG==
+2.1.0
+- Fixed a number of issues with caching
+- Patch should now be written before ModuleManager begins to apply it
+- Removed PatchSuccess popup
+- Removed installation checking
 2.0.2
 - Fixed bug with the patch not being written correctly
 - Known bug: due to ModuleManager running before Decalc'o'mania, you have to start the game twice to apply the changes to the textures.
