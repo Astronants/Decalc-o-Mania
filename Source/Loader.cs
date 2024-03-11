@@ -12,7 +12,7 @@ namespace Decalco
         internal static readonly string cache_file = Path.Combine(DirUtils.ModDir, "Plugins", "decalco.cache");
         internal static readonly string patch_file = Path.Combine(DirUtils.ModDir, "Plugins", "patch.cfg");
 
-        public void Start()
+        public void Awake()
         {
             TextureHandler.Instance.LoadTextures();
 
@@ -21,7 +21,11 @@ namespace Decalco
             if ((!File.Exists(patch_file) && TextureHandler.Instance.tex_all.Count() == 0) || useCache)
             {
                 Destroy(this);
-                if (useCache) return;
+                if (useCache)
+                {
+                    Logger.Log("Patch will be loaded from cache");
+                    return;
+                }
 
                 try
                 {
@@ -36,7 +40,7 @@ namespace Decalco
 
             TextureHandler.Instance.SortTextures();
 
-            //Create patch config
+            // create patch config
             ConfigNode patch = new ConfigNode();
             if (TextureHandler.Instance.tex_wide.Count() > 0)
                 patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
@@ -47,13 +51,13 @@ namespace Decalco
                 Logger.Log("Saving patch...");
                 patch.Save(patch_file);
                 CreateCache();
-                PopupDialog dialog = PopupDialog.SpawnPopupDialog(
+                /*PopupDialog dialog = PopupDialog.SpawnPopupDialog(
                     new MultiOptionDialog("DecalcoPatchSuccess",
                         "The patch was successfully updated! Restart the game to apply the changes.",
                         Logger.modName, HighLogic.UISkin,
                         new DialogGUIButton("OK", () => dialog = null)),
                     true,
-                    HighLogic.UISkin);
+                    HighLogic.UISkin);*/
                 return;
             }
             catch (Exception e)
@@ -127,8 +131,6 @@ namespace Decalco
 
         private void CreateCache()
         {
-            Logger.Log("Creating cache...");
-
             using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
             {
                 ConfigNode cache = new ConfigNode();
@@ -146,6 +148,7 @@ namespace Decalco
 
                 try
                 {
+                    Logger.Log("Creating cache...");
                     cache.Save(cache_file);
                     return;
                 }
