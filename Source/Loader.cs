@@ -6,43 +6,52 @@ using UnityEngine;
 
 namespace Decalco
 {
-    [KSPAddon(KSPAddon.Startup.Instantly, false)]
+    [KSPAddon(KSPAddon.Startup.Instantly, once:true)]
     class Loader : MonoBehaviour
     {
-        internal static readonly string cache_file = Path.Combine(DirUtils.ModDir, "Plugins", "decalco.cache");
-        internal static readonly string patch_file = Path.Combine(DirUtils.ModDir, "Plugins", "patch.cfg");
+        private static TextureLoader textures;
 
         public void Awake()
         {
-            TextureHandler.Instance.LoadTextures();
-            bool useCache = ValidateCache();
+            System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
 
-            if ((!File.Exists(patch_file) && TextureHandler.Instance.tex_all.Count() == 0) || useCache)
+            textures = new TextureLoader();
+            textures.Load();
+
+            if (!File.Exists(DirUtils.patch_file) && textures.all.Count() == 0)
             {
+                TryDeleteCache();
                 Destroy(this);
-                if (useCache)
-                    Logger.Log("Patch will be loaded from cache");
-                else
-                    TryDeleteCache();
-
-                return;
+            }
+            else if (ValidateCache())
+            {
+                Logger.Log("Patch will be loaded from cache");
+                Destroy(this);
+            }
+            else
+            {
+                textures.Sort();
+                CreatePatchFile();
             }
 
-            TextureHandler.Instance.SortTextures();
-            CreatePatchFile();
+            stopwatch.Stop();
+            Logger.Log($"Ran in {stopwatch.ElapsedMilliseconds / 1000.0:F3}s.");
         }
+
+
 
         private void CreatePatchFile()
         {
             ConfigNode patch = new ConfigNode();
-            if (TextureHandler.Instance.tex_wide.Count() > 0)
-                patch.AddNode(CreatePatchNode("wide", TextureHandler.Instance.tex_wide));
-            if (TextureHandler.Instance.tex_long.Count() > 0)
-                patch.AddNode(CreatePatchNode("long", TextureHandler.Instance.tex_long));
+            if (textures.wide.Count() > 0)
+                patch.AddNode(NewPatchNode("wide", textures.wide));
+            if (textures.lng.Count() > 0)
+                patch.AddNode(NewPatchNode("long", textures.lng));
             try
             {
                 Logger.Log("Saving patch...");
-                patch.Save(patch_file);
+                patch.Save(DirUtils.patch_file);
                 CreateCache();
                 /*PopupDialog dialog = PopupDialog.SpawnPopupDialog(
                 new MultiOptionDialog("DecalcoPatchSuccess",
@@ -60,8 +69,8 @@ namespace Decalco
 
             try
             {
-                if (File.Exists(patch_file)) File.Delete(patch_file);
-                if (File.Exists(cache_file)) File.Delete(cache_file);
+                if (File.Exists(DirUtils.patch_file)) File.Delete(DirUtils.patch_file);
+                if (File.Exists(DirUtils.cache_file)) File.Delete(DirUtils.cache_file);
             }
             catch (Exception e)
             {
@@ -69,7 +78,7 @@ namespace Decalco
             }
         }
 
-        private ConfigNode CreatePatchNode(string typeName, List<string> textureList)
+        private ConfigNode NewPatchNode(string typeName, IEnumerable<string> textureList)
         {
             ConfigNode config = new ConfigNode($"@PART[*]:HAS[#tags[cck_decal,{typeName},*]]:Final");
             ConfigNode module = config.AddNode("@MODULE[ModulePartVariants]");
@@ -92,29 +101,26 @@ namespace Decalco
             using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
             {
                 bool isValid = false;
-                if (File.Exists(cache_file) && File.Exists(patch_file))
+                if (File.Exists(DirUtils.cache_file) && File.Exists(DirUtils.patch_file))
                 {
                     // hash patch file contents
-                    byte[] contentBytes = File.ReadAllBytes(patch_file);
+                    byte[] contentBytes = File.ReadAllBytes(DirUtils.patch_file);
                     sha.ComputeHash(contentBytes);
                     string patchSHA = BitConverter.ToString(sha.Hash);
                     // read cache file
-                    ConfigNode cacheConfig = ConfigNode.Load(cache_file);
+                    ConfigNode cacheConfig = ConfigNode.Load(DirUtils.cache_file);
                     if (cacheConfig != null && cacheConfig.HasValue("version") && cacheConfig.HasValue("patchSHA"))
                     {
                         string version = cacheConfig.GetValue("version");
                         string cachedSHA = cacheConfig.GetValue("patchSHA");
-                        List<string> textures = new List<string>();
-                        ConfigNode[] textureNodes = cacheConfig.GetNodes("TEXTURE");
-                        foreach (ConfigNode node in textureNodes)
-                        {
-                            textures.Add(node.GetValue("mainTextureURL"));
-                        }
+                        string[] cachedTextures = cacheConfig.GetNodes("TEXTURE")
+                            .Select(node => node.GetValue("mainTextureURL"))
+                            .ToArray();
 
-                        isValid = version.Equals(Logger.modVersion);
+                        isValid = version.Equals(Logger.Version);
                         isValid &= cachedSHA.Equals(patchSHA);
-                        isValid &= textures.Except(TextureHandler.Instance.tex_all).Count() == 0;
-                        isValid &= TextureHandler.Instance.tex_all.Except(textures).Count() == 0;
+                        isValid &= cachedTextures.Except(textures.all).Count() == 0;
+                        isValid &= textures.all.Except(cachedTextures).Count() == 0;
                     }
                     else Logger.Warn("Unable to read the cache");
                 }
@@ -128,13 +134,13 @@ namespace Decalco
             {
                 ConfigNode cache = new ConfigNode();
 
-                byte[] contentBytes = File.ReadAllBytes(patch_file);
+                byte[] contentBytes = File.ReadAllBytes(DirUtils.patch_file);
                 sha.ComputeHash(contentBytes);
                 string patchSHA = BitConverter.ToString(sha.Hash);
 
-                cache.AddValue("version", Logger.modVersion);
+                cache.AddValue("version", Logger.Version);
                 cache.AddValue("patchSHA", patchSHA);
-                foreach (string texture in TextureHandler.Instance.tex_all)
+                foreach (string texture in textures.all)
                 {
                     cache.AddNode("TEXTURE").AddValue("mainTextureURL", texture);
                 }
@@ -142,7 +148,7 @@ namespace Decalco
                 try
                 {
                     Logger.Log("Saving cache...");
-                    cache.Save(cache_file);
+                    cache.Save(DirUtils.cache_file);
                     return;
                 }
                 catch (Exception e)
@@ -158,7 +164,7 @@ namespace Decalco
         {
             try
             {
-                if (File.Exists(cache_file)) File.Delete(cache_file);
+                if (File.Exists(DirUtils.cache_file)) File.Delete(DirUtils.cache_file);
             }
             catch (Exception e)
             {

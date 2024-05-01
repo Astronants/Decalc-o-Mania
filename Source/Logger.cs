@@ -1,13 +1,13 @@
 ﻿using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace Decalco
 {
-    internal class Logger : MonoBehaviour
+    internal class Logger
     {
-        internal const string modName = "Decalc'o'mania";
-        internal static readonly string modVersion = typeof(Loader).Assembly.GetName().Version.ToString();
-        internal const string logPrefix = "[Decalc'o'mania]: ";
+        internal static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        private const string logPrefix = "[Decalc'o'mania]: ";
 
         internal static void Log(string message)
         {
