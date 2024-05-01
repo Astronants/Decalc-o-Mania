@@ -43,23 +43,24 @@ namespace Decalco
 
         private void CreatePatchFile()
         {
+            Logger.Log("Creating variants...\n" +
+                "Long:\n" +
+                $"\t{string.Join("\n\t", textures.lng)}\n" +
+                "Wide:\n" +
+                $"\t{string.Join("\n\t", textures.wide)}"
+                );
+
             ConfigNode patch = new ConfigNode();
             if (textures.wide.Count() > 0)
                 patch.AddNode(NewPatchNode("wide", textures.wide));
             if (textures.lng.Count() > 0)
                 patch.AddNode(NewPatchNode("long", textures.lng));
+
             try
             {
                 Logger.Log("Saving patch...");
                 patch.Save(DirUtils.patch_file);
                 CreateCache();
-                /*PopupDialog dialog = PopupDialog.SpawnPopupDialog(
-                new MultiOptionDialog("DecalcoPatchSuccess",
-                    "The patch was successfully updated! Restart the game to apply the changes.",
-                    Logger.modName, HighLogic.UISkin,
-                    new DialogGUIButton("OK", () => dialog = null)),
-                true,
-                HighLogic.UISkin);*/
                 return;
             }
             catch (Exception e)

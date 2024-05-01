@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -29,7 +28,6 @@ namespace Decalco
 
         private bool IsLong(string texture)
         {
-            Logger.Log("Load(Texture): " + texture);
             //Texture2D img = GameDatabase.Instance.GetTexture(texture, false);
             byte[] img_data = File.ReadAllBytes(Path.Combine(DirUtils.GameDataDir, texture));
             Texture2D img = new Texture2D(2, 2);
