@@ -11,6 +11,8 @@ namespace Decalco
     {
         private static TextureLoader textures;
 
+        // The patch needs to be created before ModuleManager attempts to apply it.
+        // It's not the most reliable way to do this. A custom PartModule updating the part's material on load is preferable.
         public void Awake()
         {
             System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
@@ -22,27 +24,34 @@ namespace Decalco
             if (!File.Exists(DirUtils.patch_file) && textures.all.Count() == 0)
             {
                 TryDeleteCache();
-                Destroy(this);
+                Destroy(gameObject);
+                return;
             }
             else if (ValidateCache())
             {
                 Logger.Log("Patch will be loaded from cache");
-                Destroy(this);
+                Destroy(gameObject);
+                return;
             }
-            else
-            {
-                textures.Sort();
-                CreatePatchFile();
-            }
+            // Because cache also validates mod version, the contents of the patch could still be the same, even if it returns false.
+            // In which case Delcalc'o'mania treats it as being different while ModuleManager would see no changes and load from cache
+            // this is normal and expected, and should only happen right after updating the mod
+
+            CreatePatchFile();
 
             stopwatch.Stop();
-            Logger.Log($"Ran in {stopwatch.ElapsedMilliseconds / 1000.0:F3}s.");
+            Logger.Log($"Patch created in {stopwatch.ElapsedMilliseconds / 1000.0:F3}s.");
         }
 
-
+        // Saving the cache is not timing sensitive, it can wait until Start() is called
+        public void Start()
+        {
+            CreateCache();
+        }
 
         private void CreatePatchFile()
         {
+            textures.Sort();
             Logger.Log("Creating variants...\n" +
                 "Long:\n" +
                 $"\t{string.Join("\n\t", textures.lng)}\n" +
@@ -60,12 +69,11 @@ namespace Decalco
             {
                 Logger.Log("Saving patch...");
                 patch.Save(DirUtils.patch_file);
-                CreateCache();
                 return;
             }
             catch (Exception e)
             {
-                Logger.Error("An error occured while creating the patch", e);
+                Logger.Error("An error occured while saving the patch", e);
             }
 
             try
@@ -97,6 +105,7 @@ namespace Decalco
             return config;
         }
 
+        // Saves time and prevents writing unnecessarily
         private bool ValidateCache()
         {
             using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
@@ -105,8 +114,8 @@ namespace Decalco
                 if (File.Exists(DirUtils.cache_file) && File.Exists(DirUtils.patch_file))
                 {
                     // hash patch file contents
-                    byte[] contentBytes = File.ReadAllBytes(DirUtils.patch_file);
-                    sha.ComputeHash(contentBytes);
+                    byte[] data = File.ReadAllBytes(DirUtils.patch_file);
+                    sha.ComputeHash(data);
                     string patchSHA = BitConverter.ToString(sha.Hash);
                     // read cache file
                     ConfigNode cacheConfig = ConfigNode.Load(DirUtils.cache_file);
@@ -123,7 +132,7 @@ namespace Decalco
                         isValid &= cachedTextures.Except(textures.all).Count() == 0;
                         isValid &= textures.all.Except(cachedTextures).Count() == 0;
                     }
-                    else Logger.Warn("Unable to read the cache");
+                    else Logger.Warn("Failed to read the cache");
                 }
                 return isValid;
             }
@@ -135,8 +144,8 @@ namespace Decalco
             {
                 ConfigNode cache = new ConfigNode();
 
-                byte[] contentBytes = File.ReadAllBytes(DirUtils.patch_file);
-                sha.ComputeHash(contentBytes);
+                byte[] data = File.ReadAllBytes(DirUtils.patch_file);
+                sha.ComputeHash(data);
                 string patchSHA = BitConverter.ToString(sha.Hash);
 
                 cache.AddValue("version", Logger.Version);
@@ -150,14 +159,13 @@ namespace Decalco
                 {
                     Logger.Log("Saving cache...");
                     cache.Save(DirUtils.cache_file);
-                    return;
                 }
                 catch (Exception e)
                 {
                     Logger.Error("An error occured while saving the cache", e);
+                    TryDeleteCache();
                 }
 
-                TryDeleteCache();
             }
         }
 
