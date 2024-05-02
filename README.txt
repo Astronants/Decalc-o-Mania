@@ -1,4 +1,4 @@
-Decalc'o'mania v2.1.0
+Decalc'o'mania v2.1.1
 for KSP 1.8.x - 1.12.x
 by Astronants
 Dependencies: CommunityCategoryKit, ModuleManager
